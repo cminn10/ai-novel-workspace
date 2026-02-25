@@ -1,6 +1,6 @@
 {
   "name": "create-ai-novel-workspace",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "AI 小说创作工作区初始化与平台适配工具",
   "type": "module",
   "bin": {

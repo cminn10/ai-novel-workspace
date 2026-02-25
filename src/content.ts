@@ -12,7 +12,7 @@ export async function downloadContent(): Promise<{
   cleanup: () => void;
 }> {
   const dir = join(tmpdir(), `novel-ws-${Date.now()}`);
-  await downloadTemplate(TEMPLATE_SOURCE, { dir, preferOffline: true });
+  await downloadTemplate(TEMPLATE_SOURCE, { dir });
   return { dir, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
 }
 
