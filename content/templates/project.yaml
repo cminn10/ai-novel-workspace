@@ -1,0 +1,8 @@
+# 项目配置模板
+# 复制此文件到 projects/{project-name}/project.yaml 并填写
+
+style: ""                # 使用的文风（对应 styles/ 下的文件夹名）
+language: zh-CN          # 语言配置（对应 profiles/ 下的文件名，不含扩展名）
+title: ""                # 项目标题
+status: in-progress      # in-progress | paused | completed
+created: ""              # 创建日期 YYYY-MM-DD

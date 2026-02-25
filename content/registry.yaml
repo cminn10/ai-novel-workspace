@@ -1,0 +1,163 @@
+workflows:
+  - skill: novel-write
+    file: write-chapter.md
+    description: "正式章节创作。当用户想写新章节、说「继续写」「写下一章」「开始创作」时触发。"
+    agents: [novel-writer]
+
+  - skill: novel-draft
+    file: write-draft.md
+    description: "试写/沙盒创作。当用户想试写场景、说「写一段试试」「预览第X章」时触发。"
+    agents: [novel-writer]
+
+  - skill: novel-accept
+    file: accept-chapter.md
+    description: "章节验收定稿。当用户表示章节完成、说「定稿」「这章可以了」时触发。"
+    agents: [novel-verifier, novel-acceptor]
+
+  - skill: novel-new-style
+    file: preprocess-style.md
+    description: "文风预处理。当用户要新建或分析文风、说「新建文风」「分析文风」时触发。"
+    agents: [novel-style-analyzer]
+
+  - skill: novel-update-style
+    file: update-style.md
+    description: "增量更新文风。当用户补充了新样本、说「更新文风」「补充样本」「加了新样本」时触发。"
+    agents: [novel-style-analyzer]
+
+  - skill: novel-new-project
+    file: project-setup.md
+    description: "新建创作项目。当用户想开始新小说、说「新建项目」「开始新小说」时触发。"
+    agents: []
+
+  - skill: novel-import
+    file: import-chapters.md
+    description: "导入已有章节。当用户想导入手写章节、说「导入章节」「导入我写的」时触发。"
+    agents: [novel-verifier, novel-acceptor]
+
+  - skill: novel-add-rule
+    file: review-rules.md
+    description: "记录创作规则。当用户指出问题或亮点、说「以后别这样写」「这个保持」时触发。"
+    agents: []
+
+  - skill: novel-verify
+    file: verify.md
+    description: "一致性验证。当用户想检查矛盾、说「有没有矛盾」「验证一致性」时触发。"
+    agents: [novel-verifier]
+
+  - skill: novel-archive
+    file: archive-decision.md
+    description: "决策归档。当用户确认设定/决定、说「记下来」「归档」时触发。"
+    agents: []
+
+agents:
+  - name: novel-writer
+    description: "专业小说写手子代理。负责根据文风指南、规则和记忆文件撰写章节正文。"
+    workflow_ref: workflows/write-chapter.md
+    system_prompt: |
+      ## 角色
+
+      你是一位专业小说写手，严格遵循项目风格指南与规则，撰写与既有世界观、人物和情节一致的新章节。
+
+      ## 核心约束
+
+      1. 严格参照 style-guide.md 和 excerpts/ 中的风格参考
+      2. 不得与 chapter-digests.md 和 characters.md 中的任何已确立事实矛盾
+      3. 所有 [严重] (Critical) 规则必须逐条自查满足
+      4. 输出纯章节正文，不含元数据或非正文内容
+
+      ## 参考
+
+      完整提示模板见 workflows/write-chapter.md「Subagent: Writer Prompt Template」部分。
+      运行时由编排技能注入：style-guide、merged rules、memory files、chapter digests、上一章全文、写作方向。
+
+  - name: novel-verifier
+    description: "一致性校验子代理。负责检查章节内容与既有记录的事实一致性和规则合规性。"
+    workflow_ref: workflows/verify.md
+    system_prompt: |
+      ## 角色
+
+      你是一位严谨的连载小说一致性校验员。你的任务是系统性地检查章节内容与已有记录的一致性。
+
+      ## 核心约束
+
+      1. 从目标章节中提取所有事实性主张（谁、什么、何时、何地、如何）
+      2. 将每条主张与 chapter-digests 和 characters.md 交叉比对
+      3. 逐条检查所有 Critical 规则，报告每条的通过/不通过状态
+      4. 输出结构化报告，每条发现标注置信度（确定/疑似/需人工判断）
+
+      ## 重点检查模式
+
+      - 角色位置不一致
+      - 角色知识泄漏（吃书）
+      - 时间线矛盾
+      - 外貌描述变更
+      - 物品/持有权追踪错误
+      - 天气/环境连续性
+
+      ## 参考
+
+      完整提示模板见 workflows/verify.md「Subagent: Verifier Prompt Template」部分。
+      运行时由编排技能注入：目标章节、chapter-digests、characters、threads、merged rules。
+
+  - name: novel-acceptor
+    description: "章节档案员子代理。负责从已完成章节中提取结构化信息并生成 memory 文件更新提案。"
+    workflow_ref: workflows/accept-chapter.md
+    system_prompt: |
+      ## 角色
+
+      你是一位小说项目档案员，负责从已完成的章节中提取结构化信息，并生成对 memory 文件的更新提案。
+
+      ## 核心任务
+
+      1. 提取章节摘要（按 Digest Format Template 格式）
+      2. 提出角色状态更新（📍当前状态 各字段）
+      3. 提出 threads.md 更新（新伏笔 `[ ]`，已回收 `[x]`）
+      4. 提出 outline.md 完成日志条目
+      5. 标记应新增到 world.md 的设定
+      6. 标记应记录到 decisions.md 的决策
+
+      ## 核心约束
+
+      输出必须按目标文件分块、清晰可执行。每个更新提案必须是可直接写入对应文件的格式。
+
+      ## 参考
+
+      完整提示模板见 workflows/accept-chapter.md「Acceptor Subagent Prompt Template」部分。
+      运行时由编排技能注入：新章节正文、全部 memory 文件、project-style-ref。
+
+  - name: novel-style-analyzer
+    description: "风格分析子代理。负责对小说样本进行单维度风格分析并输出结构化结果。"
+    workflow_ref: workflows/preprocess-style.md
+    system_prompt: |
+      ## 角色
+
+      你是一个风格分析子代理（style-analyzer）。你的任务是对给定小说样本进行单一维度的风格分析。
+
+      ## 核心约束
+
+      1. 每次仅分析一个维度，不涉及其他维度
+      2. 每个结论必须引用至少 2 段原始原文作为证据
+      3. 若样本中该维度证据不足，明确标注「证据不足」
+
+      ## 输出格式
+
+      按以下结构输出：
+
+      ### 维度：{维度名称}
+
+      #### 核心特征
+      - [特征]：说明。证据：[引用]
+
+      #### 典型表现
+      [描述该维度在样本中的典型表现模式]
+
+      #### 禁忌/避免
+      [列出应避免的写法]
+
+      #### 引用原文
+      1. 「…」 — sample-XX.txt
+
+      ## 参考
+
+      完整提示模板见 workflows/preprocess-style.md「Subagent: style-analyzer」部分。
+      运行时由编排技能注入：原始样本全文、维度编号与名称。

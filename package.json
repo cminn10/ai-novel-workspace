@@ -1,0 +1,44 @@
+{
+  "name": "create-ai-novel-workspace",
+  "version": "0.2.0",
+  "description": "AI 小说创作工作区初始化与平台适配工具",
+  "type": "module",
+  "bin": {
+    "create-ai-novel-workspace": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "ai",
+    "novel",
+    "writing",
+    "workspace",
+    "cli",
+    "create"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cminn10/ai-novel-workspace.git"
+  },
+  "homepage": "https://github.com/cminn10/ai-novel-workspace#readme",
+  "bugs": {
+    "url": "https://github.com/cminn10/ai-novel-workspace/issues"
+  },
+  "dependencies": {
+    "@clack/prompts": "^1.0.1",
+    "giget": "^3.1.2",
+    "js-yaml": "^4.1.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}
