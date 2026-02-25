@@ -1,5 +1,7 @@
 # AI 小说创作系统
 
+[![npm version](https://img.shields.io/npm/v/create-ai-novel-workspace)](https://www.npmjs.com/package/create-ai-novel-workspace)
+
 一个平台无关的 AI 辅助小说创作工作区。通过结构化的文风分析、项目记忆管理和渐进式规则积累，实现风格稳定、前后一致的长篇小说创作。
 
 ## 它解决什么问题
