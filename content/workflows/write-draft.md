@@ -62,6 +62,7 @@
 - [ ] 使用比正式章节写作更轻量的上下文（scene-sketch 不包含 digests）
 - [ ] 包含：style-guide + 合并规则 + 相关 memory 内容
 - [ ] **preview-chapter**：将 `assumptions` 作为显式上下文纳入提示
+- [ ] **必须在提示中明确告知子代理当前项目的完整路径**（如 `projects/playground/`），所有文件读写操作均相对于该项目目录。子代理不得自行猜测项目路径
 
 ---
 
@@ -158,11 +159,14 @@ chapters/ > memory/ > drafts/reference > drafts/draft
 
 ## File Naming Conventions | 文件命名规范
 
-| 草稿类型 | 命名格式 | 示例 |
-|---------|---------|------|
-| scene-sketch | `drafts/scene-{descriptive-name}.md` | `drafts/scene-tavern-confrontation.md` |
-| preview-chapter | `drafts/preview-ch{N}-{descriptive-name}.md` | `drafts/preview-ch12-final-battle.md` |
+**所有路径均相对于项目目录** `projects/{project-name}/`：
 
+| 草稿类型 | 命名格式 | 示例（项目名 playground） |
+|---------|---------|------|
+| scene-sketch | `projects/{project}/drafts/scene-{descriptive-name}.md` | `projects/playground/drafts/scene-tavern-confrontation.md` |
+| preview-chapter | `projects/{project}/drafts/preview-ch{N}-{descriptive-name}.md` | `projects/playground/drafts/preview-ch12-final-battle.md` |
+
+- `{project}`：项目名（从 `project.yaml` 所在目录确定）
 - `{descriptive-name}`：简短、描述性的英文标识，使用连字符分隔
 - `{N}`：章节编号
 
