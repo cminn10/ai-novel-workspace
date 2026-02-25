@@ -1,6 +1,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import { join, relative } from "path";
 import { writeFile, ensureDir } from "../utils.js";
+import { PLATFORM_CONFIG } from "../platforms.js";
+import type { Platform } from "../types.js";
 
 function copyDirRecursive(
   src: string,
@@ -29,6 +31,7 @@ function copyDirRecursive(
 export function scaffoldWorkspace(
   targetDir: string,
   contentDir: string,
+  platforms: Platform[],
 ): string[] {
   const created: string[] = [];
 
@@ -47,15 +50,17 @@ export function scaffoldWorkspace(
     );
   }
 
-  const rootFiles: Array<{ src: string; dest: string }> = [
+  const sharedFiles: Array<{ src: string; dest: string }> = [
     { src: "rules/global-rules.md", dest: "global-rules.md" },
-    { src: "rules/cursorrules", dest: ".cursorrules" },
-    { src: "rules/CLAUDE.md", dest: "CLAUDE.md" },
     { src: "rules/system-prompt.md", dest: "system-prompt.md" },
     { src: "registry.yaml", dest: "registry.yaml" },
   ];
 
-  for (const { src, dest } of rootFiles) {
+  const platformRuleFiles = platforms.map(
+    (p) => PLATFORM_CONFIG[p].ruleFile,
+  );
+
+  for (const { src, dest } of [...sharedFiles, ...platformRuleFiles]) {
     const srcPath = join(contentDir, src);
     if (existsSync(srcPath)) {
       const content = readFileSync(srcPath, "utf-8");

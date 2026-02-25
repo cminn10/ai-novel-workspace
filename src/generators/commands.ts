@@ -1,6 +1,7 @@
 import { join, relative } from "path";
-import type { WorkflowEntry } from "../types.js";
+import type { WorkflowEntry, Platform } from "../types.js";
 import { writeFile } from "../utils.js";
+import { PLATFORM_CONFIG } from "../platforms.js";
 
 function renderCommandMd(entry: WorkflowEntry): string {
   return `---
@@ -13,11 +14,15 @@ description: "${entry.description}"
 
 export function generateCommands(
   workspaceDir: string,
+  platform: Platform,
   workflows: WorkflowEntry[],
   dryRun: boolean,
 ): string[] {
+  const commandsDir = PLATFORM_CONFIG[platform].commandsDir;
+  if (!commandsDir) return [];
+
   const created: string[] = [];
-  const baseDir = join(workspaceDir, ".claude", "commands");
+  const baseDir = join(workspaceDir, commandsDir);
 
   for (const entry of workflows) {
     const filePath = join(baseDir, `${entry.skill}.md`);

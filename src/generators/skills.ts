@@ -1,12 +1,7 @@
 import { join, relative } from "path";
 import type { WorkflowEntry, Platform } from "../types.js";
 import { writeFile } from "../utils.js";
-
-function platformSkillDir(workspaceDir: string, platform: Platform): string {
-  return platform === "cursor"
-    ? join(workspaceDir, ".cursor", "skills")
-    : join(workspaceDir, ".claude", "skills");
-}
+import { PLATFORM_CONFIG } from "../platforms.js";
 
 function renderSkillMd(entry: WorkflowEntry): string {
   return `---
@@ -25,7 +20,7 @@ export function generateSkills(
   dryRun: boolean,
 ): string[] {
   const created: string[] = [];
-  const baseDir = platformSkillDir(workspaceDir, platform);
+  const baseDir = join(workspaceDir, PLATFORM_CONFIG[platform].skillsDir);
 
   for (const entry of workflows) {
     const filePath = join(baseDir, entry.skill, "SKILL.md");

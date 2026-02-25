@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync, readdirSync, rmSync } from "fs";
 import { join, dirname, relative } from "path";
 import pc from "picocolors";
+import type { Platform, PlatformConfig } from "./types.js";
 
 export function ensureDir(dir: string): void {
   if (!existsSync(dir)) {
@@ -28,17 +29,21 @@ export function scanProfiles(dir: string): string[] {
 
 export function cleanGenerated(
   workspaceDir: string,
+  platforms: Platform[],
+  platformConfig: Record<Platform, PlatformConfig>,
   dryRun: boolean,
 ): { removed: string[] } {
   const removed: string[] = [];
 
-  const dirs = [
-    join(workspaceDir, ".cursor", "skills"),
-    join(workspaceDir, ".cursor", "agents"),
-    join(workspaceDir, ".claude", "skills"),
-    join(workspaceDir, ".claude", "commands"),
-    join(workspaceDir, ".claude", "agents"),
-  ];
+  const dirs: string[] = [];
+  for (const plat of platforms) {
+    const config = platformConfig[plat];
+    dirs.push(join(workspaceDir, config.skillsDir));
+    dirs.push(join(workspaceDir, config.agentsDir));
+    if (config.commandsDir) {
+      dirs.push(join(workspaceDir, config.commandsDir));
+    }
+  }
 
   for (const dir of dirs) {
     if (!existsSync(dir)) continue;

@@ -1,12 +1,7 @@
 import { join, relative } from "path";
 import type { AgentEntry, Platform } from "../types.js";
 import { writeFile } from "../utils.js";
-
-function platformAgentDir(workspaceDir: string, platform: Platform): string {
-  return platform === "cursor"
-    ? join(workspaceDir, ".cursor", "agents")
-    : join(workspaceDir, ".claude", "agents");
-}
+import { PLATFORM_CONFIG } from "../platforms.js";
 
 function renderAgentMd(entry: AgentEntry): string {
   return `---
@@ -24,7 +19,7 @@ export function generateAgents(
   dryRun: boolean,
 ): string[] {
   const created: string[] = [];
-  const baseDir = platformAgentDir(workspaceDir, platform);
+  const baseDir = join(workspaceDir, PLATFORM_CONFIG[platform].agentsDir);
 
   for (const entry of agents) {
     const filePath = join(baseDir, `${entry.name}.md`);

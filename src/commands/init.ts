@@ -5,9 +5,12 @@ import pc from "picocolors";
 import { downloadContent, loadRegistry } from "../content.js";
 import { scanProfiles } from "../utils.js";
 import { scaffoldWorkspace } from "../generators/workspace.js";
-import { generateSkills } from "../generators/skills.js";
-import { generateAgents } from "../generators/agents.js";
-import { generateCommands } from "../generators/commands.js";
+import {
+  ALL_PLATFORMS,
+  parsePlatforms,
+  buildPlatformSelectOptions,
+  generateAdapters,
+} from "../platforms.js";
 import type { Platform } from "../types.js";
 
 export interface InitOptions {
@@ -52,16 +55,14 @@ export async function runInit(options: InitOptions): Promise<void> {
   if (options.platform) {
     platforms = parsePlatforms(options.platform);
   } else if (options.yes) {
-    platforms = ["cursor", "claude-code"];
+    platforms = [...ALL_PLATFORMS];
   } else {
     const platResult = await p.select({
       message: "选择目标平台",
-      options: [
-        { value: "cursor", label: "Cursor" },
-        { value: "claude-code", label: "Claude Code" },
-        { value: "all", label: "两者都要" },
-        { value: "generic", label: "仅核心文件（不生成适配器）" },
-      ],
+      options: buildPlatformSelectOptions({
+        includeAll: true,
+        includeGeneric: true,
+      }),
     });
     if (p.isCancel(platResult)) {
       p.cancel("已取消");
@@ -97,42 +98,18 @@ export async function runInit(options: InitOptions): Promise<void> {
     s.start("创建工作区文件");
     const wsFiles = options.dryRun
       ? []
-      : scaffoldWorkspace(targetDir, contentDir);
+      : scaffoldWorkspace(targetDir, contentDir, platforms);
     s.stop(`${wsFiles.length} 个工作区文件已创建`);
 
     if (platforms.length > 0) {
       s.start("生成平台适配文件");
       const registry = loadRegistry(contentDir);
-      const adapterFiles: string[] = [];
-
-      for (const plat of platforms) {
-        adapterFiles.push(
-          ...generateSkills(
-            targetDir,
-            plat,
-            registry.workflows,
-            options.dryRun ?? false,
-          ),
-        );
-        adapterFiles.push(
-          ...generateAgents(
-            targetDir,
-            plat,
-            registry.agents,
-            options.dryRun ?? false,
-          ),
-        );
-        if (plat === "claude-code") {
-          adapterFiles.push(
-            ...generateCommands(
-              targetDir,
-              registry.workflows,
-              options.dryRun ?? false,
-            ),
-          );
-        }
-      }
-
+      const adapterFiles = generateAdapters(
+        targetDir,
+        platforms,
+        registry,
+        options.dryRun ?? false,
+      );
       s.stop(`${adapterFiles.length} 个适配文件已生成`);
     }
 
@@ -153,20 +130,5 @@ export async function runInit(options: InitOptions): Promise<void> {
     p.outro("祝创作愉快！");
   } finally {
     cleanup();
-  }
-}
-
-function parsePlatforms(value: string): Platform[] {
-  switch (value) {
-    case "cursor":
-      return ["cursor"];
-    case "claude-code":
-      return ["claude-code"];
-    case "all":
-      return ["cursor", "claude-code"];
-    case "generic":
-      return [];
-    default:
-      return ["cursor", "claude-code"];
   }
 }

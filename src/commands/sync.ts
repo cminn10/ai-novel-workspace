@@ -1,12 +1,15 @@
-import { existsSync } from "fs";
-import { join } from "path";
 import * as p from "@clack/prompts";
 import pc from "picocolors";
 import { resolveRegistry } from "../content.js";
 import { isNovelWorkspace, cleanGenerated } from "../utils.js";
-import { generateSkills } from "../generators/skills.js";
-import { generateAgents } from "../generators/agents.js";
-import { generateCommands } from "../generators/commands.js";
+import {
+  ALL_PLATFORMS,
+  PLATFORM_CONFIG,
+  parsePlatforms,
+  detectPlatforms,
+  buildPlatformSelectOptions,
+  generateAdapters,
+} from "../platforms.js";
 import type { Platform } from "../types.js";
 
 export interface SyncOptions {
@@ -14,13 +17,6 @@ export interface SyncOptions {
   clean?: boolean;
   dryRun?: boolean;
   yes?: boolean;
-}
-
-function detectPlatforms(cwd: string): Platform[] {
-  const platforms: Platform[] = [];
-  if (existsSync(join(cwd, ".cursor"))) platforms.push("cursor");
-  if (existsSync(join(cwd, ".claude"))) platforms.push("claude-code");
-  return platforms;
 }
 
 export async function runSync(options: SyncOptions): Promise<void> {
@@ -35,10 +31,25 @@ export async function runSync(options: SyncOptions): Promise<void> {
     process.exit(1);
   }
 
+  let cleanPlatforms: Platform[];
+  if (options.platform) {
+    cleanPlatforms = parsePlatforms(options.platform);
+  } else {
+    cleanPlatforms = detectPlatforms(cwd);
+    if (cleanPlatforms.length === 0) {
+      cleanPlatforms = [...ALL_PLATFORMS];
+    }
+  }
+
   if (options.clean) {
     const s = p.spinner();
     s.start("清理已生成的适配文件");
-    const { removed } = cleanGenerated(cwd, options.dryRun ?? false);
+    const { removed } = cleanGenerated(
+      cwd,
+      cleanPlatforms,
+      PLATFORM_CONFIG,
+      options.dryRun ?? false,
+    );
     s.stop(`${removed.length} 个文件已清理`);
 
     if (options.dryRun) {
@@ -60,18 +71,16 @@ export async function runSync(options: SyncOptions): Promise<void> {
     } else {
       const detected = detectPlatforms(cwd);
       if (detected.length > 0) {
-        p.log.info(`检测到已有适配: ${detected.join(", ")}`);
+        p.log.info(
+          `检测到已有适配: ${detected.map((p) => PLATFORM_CONFIG[p].label).join(", ")}`,
+        );
         platforms = detected;
       } else if (options.yes) {
-        platforms = ["cursor", "claude-code"];
+        platforms = [...ALL_PLATFORMS];
       } else {
         const platResult = await p.select({
           message: "选择目标平台",
-          options: [
-            { value: "cursor", label: "Cursor" },
-            { value: "claude-code", label: "Claude Code" },
-            { value: "all", label: "两者都要" },
-          ],
+          options: buildPlatformSelectOptions({ includeAll: true }),
         });
         if (p.isCancel(platResult)) {
           p.cancel("已取消");
@@ -82,38 +91,21 @@ export async function runSync(options: SyncOptions): Promise<void> {
     }
 
     s.start("清理旧适配文件");
-    const { removed } = cleanGenerated(cwd, options.dryRun ?? false);
+    const { removed } = cleanGenerated(
+      cwd,
+      platforms,
+      PLATFORM_CONFIG,
+      options.dryRun ?? false,
+    );
     s.stop(`${removed.length} 个旧文件已清理`);
 
     s.start("重新生成适配文件");
-    const created: string[] = [];
-    for (const plat of platforms) {
-      created.push(
-        ...generateSkills(
-          cwd,
-          plat,
-          registry.workflows,
-          options.dryRun ?? false,
-        ),
-      );
-      created.push(
-        ...generateAgents(
-          cwd,
-          plat,
-          registry.agents,
-          options.dryRun ?? false,
-        ),
-      );
-      if (plat === "claude-code") {
-        created.push(
-          ...generateCommands(
-            cwd,
-            registry.workflows,
-            options.dryRun ?? false,
-          ),
-        );
-      }
-    }
+    const created = generateAdapters(
+      cwd,
+      platforms,
+      registry,
+      options.dryRun ?? false,
+    );
     s.stop(`${created.length} 个适配文件已生成`);
 
     if (options.dryRun) {
@@ -131,18 +123,5 @@ export async function runSync(options: SyncOptions): Promise<void> {
     p.outro("同步完成");
   } finally {
     cleanup?.();
-  }
-}
-
-function parsePlatforms(value: string): Platform[] {
-  switch (value) {
-    case "cursor":
-      return ["cursor"];
-    case "claude-code":
-      return ["claude-code"];
-    case "all":
-      return ["cursor", "claude-code"];
-    default:
-      return ["cursor", "claude-code"];
   }
 }

@@ -17,11 +17,11 @@ AI 小说创作工作区初始化与平台适配工具
 
 命令:
   init      创建新的小说工作区（默认命令）
-  setup     为已有工作区生成平台适配文件
+  setup     为已有工作区生成平台适配文件（支持增量添加）
   sync      重新生成适配文件（清理旧文件后重建）
 
 通用选项:
-  --platform <p>   cursor | claude-code | all | generic
+  --platform <p>   cursor | claude-code | antigravity | all | generic
   --dry-run        预览模式（不写入文件）
   -y               跳过交互确认
   -h, --help       显示帮助
@@ -38,6 +38,7 @@ sync 专用选项:
   bunx create-ai-novel-workspace             交互式创建工作区
   bunx create-ai-novel-workspace init --dir my-novel
   bunx create-ai-novel-workspace setup --platform cursor
+  bunx create-ai-novel-workspace setup --platform antigravity
   bunx create-ai-novel-workspace sync
   bunx create-ai-novel-workspace sync --clean
 `);

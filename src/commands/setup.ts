@@ -2,9 +2,14 @@ import * as p from "@clack/prompts";
 import pc from "picocolors";
 import { resolveRegistry } from "../content.js";
 import { isNovelWorkspace } from "../utils.js";
-import { generateSkills } from "../generators/skills.js";
-import { generateAgents } from "../generators/agents.js";
-import { generateCommands } from "../generators/commands.js";
+import {
+  ALL_PLATFORMS,
+  PLATFORM_CONFIG,
+  parsePlatforms,
+  detectPlatforms,
+  buildPlatformSelectOptions,
+  generateAdapters,
+} from "../platforms.js";
 import type { Platform } from "../types.js";
 
 export interface SetupOptions {
@@ -32,71 +37,79 @@ export async function runSetup(options: SetupOptions): Promise<void> {
 
   try {
     let platforms: Platform[];
+
     if (options.platform) {
       platforms = parsePlatforms(options.platform);
     } else if (options.yes) {
-      platforms = ["cursor", "claude-code"];
+      platforms = [...ALL_PLATFORMS];
     } else {
-      const platResult = await p.select({
-        message: "选择目标平台",
-        options: [
-          { value: "cursor", label: "Cursor" },
-          { value: "claude-code", label: "Claude Code" },
-          { value: "all", label: "两者都要" },
-        ],
-      });
-      if (p.isCancel(platResult)) {
-        p.cancel("已取消");
-        process.exit(0);
+      const existing = detectPlatforms(cwd);
+
+      if (existing.length > 0) {
+        p.log.info(
+          `已检测到适配: ${existing.map((p) => PLATFORM_CONFIG[p].label).join(", ")}`,
+        );
       }
-      platforms = parsePlatforms(platResult as string);
+
+      const unconfigured = ALL_PLATFORMS.filter(
+        (p) => !existing.includes(p),
+      );
+
+      if (unconfigured.length === 0) {
+        p.log.success("所有平台均已配置");
+        p.log.info(
+          `使用 ${pc.cyan("create-ai-novel-workspace sync")} 重新生成适配文件`,
+        );
+        p.outro("无需操作");
+        return;
+      }
+
+      const selectOptions = buildPlatformSelectOptions({
+        exclude: existing,
+        includeAll: true,
+      });
+
+      if (selectOptions.length === 1) {
+        platforms = [unconfigured[0]];
+        p.log.info(
+          `将为 ${pc.cyan(PLATFORM_CONFIG[unconfigured[0]].label)} 生成适配文件`,
+        );
+      } else {
+        const platResult = await p.select({
+          message: "选择要添加的平台",
+          options: selectOptions,
+        });
+        if (p.isCancel(platResult)) {
+          p.cancel("已取消");
+          process.exit(0);
+        }
+        platforms = parsePlatforms(platResult as string);
+      }
     }
 
     s.start("生成适配文件");
-
-    const created: string[] = [];
-    for (const plat of platforms) {
-      created.push(
-        ...generateSkills(
-          cwd,
-          plat,
-          registry.workflows,
-          options.dryRun ?? false,
-        ),
-      );
-      created.push(
-        ...generateAgents(
-          cwd,
-          plat,
-          registry.agents,
-          options.dryRun ?? false,
-        ),
-      );
-      if (plat === "claude-code") {
-        created.push(
-          ...generateCommands(
-            cwd,
-            registry.workflows,
-            options.dryRun ?? false,
-          ),
-        );
-      }
-    }
-
+    const created = generateAdapters(
+      cwd,
+      platforms,
+      registry,
+      options.dryRun ?? false,
+    );
     s.stop(`${created.length} 个适配文件已生成`);
 
     if (options.dryRun) {
       p.log.warn("预览模式 — 未实际写入文件");
     }
 
+    const hasCommands = platforms.some(
+      (pl) => PLATFORM_CONFIG[pl].commandsDir,
+    );
+
     p.note(
       [
-        `平台: ${platforms.join(", ")}`,
+        `平台: ${platforms.map((pl) => PLATFORM_CONFIG[pl].label).join(", ")}`,
         `Skills: ${registry.workflows.length} 个`,
         `Agents: ${registry.agents.length} 个`,
-        platforms.includes("claude-code")
-          ? `Commands: ${registry.workflows.length} 个`
-          : "",
+        hasCommands ? `Commands: ${registry.workflows.length} 个` : "",
         "",
         pc.dim("重新生成: create-ai-novel-workspace sync"),
         pc.dim("清理: create-ai-novel-workspace sync --clean"),
@@ -109,18 +122,5 @@ export async function runSetup(options: SetupOptions): Promise<void> {
     p.outro("适配完成");
   } finally {
     cleanup?.();
-  }
-}
-
-function parsePlatforms(value: string): Platform[] {
-  switch (value) {
-    case "cursor":
-      return ["cursor"];
-    case "claude-code":
-      return ["claude-code"];
-    case "all":
-      return ["cursor", "claude-code"];
-    default:
-      return ["cursor", "claude-code"];
   }
 }
