@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "release": "bash scripts/release.sh"
   },
   "keywords": [
     "ai",
